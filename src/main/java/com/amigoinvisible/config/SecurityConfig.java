@@ -41,8 +41,8 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
-                        .requestMatchers("/api/rooms/*/preview").permitAll() // GET /api/rooms/{code} para previsualizar
+                        .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                        .requestMatchers("/api/rooms/*/preview", "/rooms/*/preview").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(tokenAuthFilter, UsernamePasswordAuthenticationFilter.class);
