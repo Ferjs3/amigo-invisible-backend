@@ -135,6 +135,25 @@ public class RoomService {
     }
 
     @Transactional
+    public RoomDetailResponse removeParticipant(User admin, Long roomId, Long targetUserId) {
+        Room room = requireAdmin(admin, roomId);
+        requireOpen(room);
+
+        if (admin.getId().equals(targetUserId)) {
+            throw new ConflictException("El admin no puede eliminarse a si mismo de esta forma. Si queres irte, usa 'Salir de la sala'.");
+        }
+
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        RoomParticipant participant = participantRepository.findByRoomAndUser(room, target)
+                .orElseThrow(() -> new ResourceNotFoundException("Ese usuario no es parte de esta sala"));
+
+        participantRepository.delete(participant);
+
+        return toDetail(room, admin);
+    }
+
+    @Transactional
     public ExclusionResponse addExclusion(User admin, Long roomId, ExclusionRequest request) {
         Room room = requireAdmin(admin, roomId);
         requireOpen(room);

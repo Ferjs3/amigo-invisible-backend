@@ -59,6 +59,12 @@ public class RoomController {
         return ResponseEntity.noContent().build();
     }
 
+    // Eliminar a otro participante (solo admin, solo mientras la sala esta abierta).
+    @DeleteMapping("/{id}/participants/{userId}")
+    public ResponseEntity<RoomDetailResponse> removeParticipant(@PathVariable Long id, @PathVariable Long userId) {
+        return ResponseEntity.ok(roomService.removeParticipant(currentUser.get(), id, userId));
+    }
+
     @GetMapping("/{id}/exclusions")
     public ResponseEntity<List<ExclusionResponse>> listExclusions(@PathVariable Long id) {
         return ResponseEntity.ok(roomService.listExclusions(currentUser.get(), id));

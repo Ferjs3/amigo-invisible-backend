@@ -42,6 +42,9 @@ public class TokenAuthFilter extends OncePerRequestFilter {
             Optional<AuthToken> authToken = authTokenRepository.findByToken(rawToken);
 
             if (authToken.isPresent() && !isExpired(authToken.get())) {
+                // Cargamos el usuario fresco y completo (no la referencia "perezosa"
+                // que cuelga de AuthToken.user), asi evitamos un LazyInitializationException
+                // mas tarde, cuando Hibernate ya cerro la sesion de esta request.
                 Long userId = authToken.get().getUser().getId();
                 userRepository.findById(userId).ifPresent(user -> {
                     var authentication = new UsernamePasswordAuthenticationToken(user, null, List.of());
