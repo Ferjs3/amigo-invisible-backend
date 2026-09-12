@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -25,8 +26,13 @@ public class SecurityConfig {
 
     private final TokenAuthFilter tokenAuthFilter;
 
-    @Value("${app.cors.allowed-origin}")
-    private String allowedOrigin;
+    // Lista separada por comas de origenes (o PATRONES con *) permitidos para CORS.
+    // Ejemplo en application.properties / variable de entorno:
+    //   app.cors.allowed-origins=http://localhost:4200,https://tu-app.vercel.app,https://*.vercel.app
+    // El patron con * es lo que permite que las URLs de preview de Vercel
+    // (que cambian en cada deploy) tambien puedan hablarle al backend.
+    @Value("${app.cors.allowed-origins:http://localhost:4200}")
+    private String allowedOriginsRaw;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -52,8 +58,15 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        List<String> originPatterns = Arrays.stream(allowedOriginsRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(allowedOrigin));
+        // setAllowedOriginPatterns (en vez de setAllowedOrigins) es lo que permite
+        // usar comodines como "https://*.vercel.app" combinado con allowCredentials.
+        configuration.setAllowedOriginPatterns(originPatterns);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
