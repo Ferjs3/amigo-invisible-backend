@@ -22,12 +22,19 @@ public class RoomService {
     private final RoomParticipantRepository participantRepository;
     private final RoomExclusionRepository exclusionRepository;
     private final AssignmentRepository assignmentRepository;
+    private final WishlistItemRepository wishlistItemRepository;
+    private final QuestionRepository questionRepository;
+    private final BudgetVoteRepository budgetVoteRepository;
     private final UserRepository userRepository;
     private final RoomCodeGenerator roomCodeGenerator;
     private final DrawService drawService;
 
     @Transactional
     public RoomDetailResponse createRoom(User admin, CreateRoomRequest request) {
+        if (request.eventDate() != null && request.eventDate().isBefore(java.time.LocalDate.now())) {
+            throw new ConflictException("La fecha del evento no puede ser anterior a hoy");
+        }
+
         Room room = Room.builder()
                 .name(request.name())
                 .code(roomCodeGenerator.generateUniqueCode())
@@ -126,6 +133,7 @@ public class RoomService {
                 .orElseThrow(() -> new ResourceNotFoundException("No sos parte de esta sala"));
 
         participantRepository.delete(participant);
+        budgetVoteRepository.deleteByRoomAndVoter(room, user);
 
         // Regla de negocio: si alguien se baja de una sala ya sellada, se descarta entera.
         if (room.getStatus() == RoomStatus.SEALED) {
@@ -149,8 +157,24 @@ public class RoomService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ese usuario no es parte de esta sala"));
 
         participantRepository.delete(participant);
+        budgetVoteRepository.deleteByRoomAndVoter(room, target);
 
         return toDetail(room, admin);
+    }
+
+    // Borra la sala entera y todo lo que depende de ella. Accion irreversible,
+    // solo el admin puede hacerla, en cualquier estado de la sala.
+    @Transactional
+    public void deleteRoom(User admin, Long roomId) {
+        Room room = requireAdmin(admin, roomId);
+
+        assignmentRepository.deleteAll(assignmentRepository.findByRoom(room));
+        exclusionRepository.deleteAll(exclusionRepository.findByRoom(room));
+        wishlistItemRepository.deleteAll(wishlistItemRepository.findByRoom(room));
+        questionRepository.deleteAll(questionRepository.findByRoom(room));
+        budgetVoteRepository.deleteByRoom(room);
+        participantRepository.deleteAll(participantRepository.findByRoomOrderByJoinedAtAsc(room));
+        roomRepository.delete(room);
     }
 
     @Transactional

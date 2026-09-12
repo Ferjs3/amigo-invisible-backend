@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByRoomAndTargetUserOrderByCreatedAtDesc(Room room, User targetUser);
     Optional<Question> findByIdAndTargetUser(Long id, User targetUser);
+    List<Question> findByRoom(Room room);
 }

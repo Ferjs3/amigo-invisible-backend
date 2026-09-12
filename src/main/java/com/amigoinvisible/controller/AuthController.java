@@ -32,4 +32,11 @@ public class AuthController {
         var user = currentUser.get();
         return ResponseEntity.ok(new UserResponse(user.getId(), user.getUsername(), user.getEmail()));
     }
+
+    @DeleteMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authorizationHeader) {
+        String rawToken = authorizationHeader.replace("Bearer ", "").trim();
+        authService.logout(rawToken);
+        return ResponseEntity.noContent().build();
+    }
 }

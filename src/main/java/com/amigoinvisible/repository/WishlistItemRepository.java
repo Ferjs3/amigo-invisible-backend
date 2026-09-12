@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface WishlistItemRepository extends JpaRepository<WishlistItem, Long> {
     List<WishlistItem> findByRoomAndUserOrderByCreatedAtAsc(Room room, User user);
     Optional<WishlistItem> findByIdAndRoomAndUser(Long id, Room room, User user);
+    List<WishlistItem> findByRoom(Room room);
 }

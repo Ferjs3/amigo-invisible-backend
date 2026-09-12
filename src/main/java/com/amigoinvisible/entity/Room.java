@@ -54,6 +54,13 @@ public class Room {
     @Column(name = "drawn_at")
     private Instant drawnAt;
 
+    // Si hay una votacion de presupuesto en curso (abierta por el admin).
+    // Se cierra sola cuando todos votaron y hay un ganador claro, o cuando
+    // el admin desempata.
+    @Column(name = "budget_voting_open", nullable = false)
+    @Builder.Default
+    private boolean budgetVotingOpen = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

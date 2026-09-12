@@ -62,6 +62,11 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
+    @Transactional
+    public void logout(String rawToken) {
+        authTokenRepository.deleteByToken(rawToken);
+    }
+
     private AuthResponse buildAuthResponse(User user) {
         AuthToken authToken = AuthToken.builder()
                 .user(user)

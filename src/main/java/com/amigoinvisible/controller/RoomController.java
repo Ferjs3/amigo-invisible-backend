@@ -47,6 +47,12 @@ public class RoomController {
         return ResponseEntity.ok(roomService.getDetail(currentUser.get(), id));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRoom(@PathVariable Long id) {
+        roomService.deleteRoom(currentUser.get(), id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/participants/me")
     public ResponseEntity<RoomDetailResponse> setReady(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
         boolean ready = Boolean.TRUE.equals(body.get("ready"));
