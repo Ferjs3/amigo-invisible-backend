@@ -1,6 +1,7 @@
 package com.amigoinvisible.controller;
 
 import com.amigoinvisible.dto.QuestionDtos.AnswerQuestionRequest;
+import com.amigoinvisible.dto.QuestionDtos.AskedQuestionResponse;
 import com.amigoinvisible.dto.QuestionDtos.AskQuestionRequest;
 import com.amigoinvisible.dto.QuestionDtos.QuestionResponse;
 import com.amigoinvisible.security.CurrentUser;
@@ -20,21 +21,25 @@ public class QuestionController {
     private final QuestionService questionService;
     private final CurrentUser currentUser;
 
-    @GetMapping("/api/rooms/{roomId}/questions/{targetUserId}")
-    public ResponseEntity<List<QuestionResponse>> getWall(@PathVariable Long roomId, @PathVariable Long targetUserId) {
-        return ResponseEntity.ok(questionService.getWall(currentUser.get(), roomId, targetUserId));
+    // Lo que YO pregunte (con sus respuestas, y a quien se lo pregunte).
+    @GetMapping("/api/rooms/{roomId}/questions/asked")
+    public ResponseEntity<List<AskedQuestionResponse>> getAskedByMe(@PathVariable Long roomId) {
+        return ResponseEntity.ok(questionService.getAskedByMe(currentUser.get(), roomId));
+    }
+
+    // Lo que ME preguntaron (para responder). Nunca se sabe quien pregunto.
+    @GetMapping("/api/rooms/{roomId}/questions/received")
+    public ResponseEntity<List<QuestionResponse>> getReceivedByMe(@PathVariable Long roomId) {
+        return ResponseEntity.ok(questionService.getReceivedByMe(currentUser.get(), roomId));
     }
 
     @PostMapping("/api/rooms/{roomId}/questions/{targetUserId}")
-    public ResponseEntity<QuestionResponse> ask(@PathVariable Long roomId, @PathVariable Long targetUserId,
-                                                 @Valid @RequestBody AskQuestionRequest request) {
+    public ResponseEntity<AskedQuestionResponse> ask(@PathVariable Long roomId, @PathVariable Long targetUserId,
+                                                      @Valid @RequestBody AskQuestionRequest request) {
         var response = questionService.ask(currentUser.get(), roomId, targetUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // Ruta a nivel raiz (no anidada en /rooms) porque solo el dueno responde
-    // y no necesitamos volver a validar membresia de sala aca: alcanza con
-    // ser el target_user_id de la pregunta.
     @PatchMapping("/api/questions/{questionId}/answer")
     public ResponseEntity<QuestionResponse> answer(@PathVariable Long questionId,
                                                      @Valid @RequestBody AnswerQuestionRequest request) {

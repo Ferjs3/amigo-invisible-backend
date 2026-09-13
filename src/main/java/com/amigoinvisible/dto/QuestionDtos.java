@@ -23,4 +23,18 @@ public class QuestionDtos {
             boolean answered,
             Instant createdAt
     ) {}
+
+    // Para "lo que pregunte": a diferencia de QuestionResponse, aca SI mostramos
+    // a quien se le pregunto -- eso ya lo sabe el que pregunto, no es un secreto
+    // para el mismo. Lo que sigue sin exponerse en ningun lado es al reves
+    // (quien le pregunto que a el).
+    public record AskedQuestionResponse(
+            Long id,
+            Long targetUserId,
+            String targetUsername,
+            String questionText,
+            String answerText,
+            boolean answered,
+            Instant createdAt
+    ) {}
 }

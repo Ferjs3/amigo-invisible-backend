@@ -1,6 +1,7 @@
 package com.amigoinvisible.service;
 
 import com.amigoinvisible.dto.QuestionDtos.AnswerQuestionRequest;
+import com.amigoinvisible.dto.QuestionDtos.AskedQuestionResponse;
 import com.amigoinvisible.dto.QuestionDtos.AskQuestionRequest;
 import com.amigoinvisible.dto.QuestionDtos.QuestionResponse;
 import com.amigoinvisible.entity.Question;
@@ -20,6 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 
+// Las preguntas son privadas de punta a punta: cada quien ve solo "lo que
+// pregunto" (con sus respuestas) y "lo que le preguntaron" (para responder).
+// Nadie navega el muro de otro participante. El anonimato de quien pregunta
+// se mantiene igual que antes: el dueno nunca ve quien le pregunto.
 @Service
 @RequiredArgsConstructor
 public class QuestionService {
@@ -30,23 +35,31 @@ public class QuestionService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public List<QuestionResponse> getWall(User viewer, Long roomId, Long targetUserId) {
-        Room room = requireMember(viewer, roomId);
-        User target = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+    public List<AskedQuestionResponse> getAskedByMe(User asker, Long roomId) {
+        Room room = requireMember(asker, roomId);
+        return questionRepository.findByRoomAndAskerOrderByCreatedAtDesc(room, asker).stream()
+                .map(q -> new AskedQuestionResponse(
+                        q.getId(),
+                        q.getTargetUser().getId(),
+                        q.getTargetUser().getUsername(),
+                        q.getQuestionText(),
+                        q.getAnswerText(),
+                        q.isAnswered(),
+                        q.getCreatedAt()
+                ))
+                .toList();
+    }
 
-        // El listado publico del muro solo debe mostrar preguntas ya respondidas
-        // (salvo para el propio dueno, que necesita ver las pendientes para responderlas).
-        boolean isOwner = viewer.getId().equals(targetUserId);
-
-        return questionRepository.findByRoomAndTargetUserOrderByCreatedAtDesc(room, target).stream()
-                .filter(q -> isOwner || q.isAnswered())
+    @Transactional(readOnly = true)
+    public List<QuestionResponse> getReceivedByMe(User owner, Long roomId) {
+        Room room = requireMember(owner, roomId);
+        return questionRepository.findByRoomAndTargetUserOrderByCreatedAtDesc(room, owner).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional
-    public QuestionResponse ask(User asker, Long roomId, Long targetUserId, AskQuestionRequest request) {
+    public AskedQuestionResponse ask(User asker, Long roomId, Long targetUserId, AskQuestionRequest request) {
         Room room = requireMember(asker, roomId);
         User target = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
@@ -66,7 +79,15 @@ public class QuestionService {
                 .build();
         question = questionRepository.save(question);
 
-        return toResponse(question);
+        return new AskedQuestionResponse(
+                question.getId(),
+                target.getId(),
+                target.getUsername(),
+                question.getQuestionText(),
+                null,
+                false,
+                question.getCreatedAt()
+        );
     }
 
     @Transactional
@@ -75,7 +96,7 @@ public class QuestionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pregunta no encontrada"));
 
         if (!question.getTargetUser().getId().equals(owner.getId())) {
-            throw new ForbiddenException("Solo el dueno del muro puede responder");
+            throw new ForbiddenException("Solo el dueno de la pregunta puede responder");
         }
 
         question.setAnswerText(request.answerText());
