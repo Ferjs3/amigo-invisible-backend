@@ -4,16 +4,18 @@ import com.amigoinvisible.dto.QuestionDtos.AnswerQuestionRequest;
 import com.amigoinvisible.dto.QuestionDtos.AskedQuestionResponse;
 import com.amigoinvisible.dto.QuestionDtos.AskQuestionRequest;
 import com.amigoinvisible.dto.QuestionDtos.QuestionResponse;
+import com.amigoinvisible.entity.Assignment;
 import com.amigoinvisible.entity.Question;
 import com.amigoinvisible.entity.Room;
+import com.amigoinvisible.entity.RoomStatus;
 import com.amigoinvisible.entity.User;
 import com.amigoinvisible.exception.ConflictException;
 import com.amigoinvisible.exception.ForbiddenException;
 import com.amigoinvisible.exception.ResourceNotFoundException;
+import com.amigoinvisible.repository.AssignmentRepository;
 import com.amigoinvisible.repository.QuestionRepository;
 import com.amigoinvisible.repository.RoomParticipantRepository;
 import com.amigoinvisible.repository.RoomRepository;
-import com.amigoinvisible.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +25,8 @@ import java.util.List;
 
 // Las preguntas son privadas de punta a punta: cada quien ve solo "lo que
 // pregunto" (con sus respuestas) y "lo que le preguntaron" (para responder).
-// Nadie navega el muro de otro participante. El anonimato de quien pregunta
-// se mantiene igual que antes: el dueno nunca ve quien le pregunto.
+// Nadie navega el muro de otro participante, y solo se le puede preguntar
+// al amigo invisible que te toco en el sorteo (nunca a cualquiera de la sala).
 @Service
 @RequiredArgsConstructor
 public class QuestionService {
@@ -32,7 +34,7 @@ public class QuestionService {
     private final QuestionRepository questionRepository;
     private final RoomRepository roomRepository;
     private final RoomParticipantRepository participantRepository;
-    private final UserRepository userRepository;
+    private final AssignmentRepository assignmentRepository;
 
     @Transactional(readOnly = true)
     public List<AskedQuestionResponse> getAskedByMe(User asker, Long roomId) {
@@ -58,18 +60,22 @@ public class QuestionService {
                 .toList();
     }
 
+    // Ya no recibe un targetUserId: el destinatario SIEMPRE es tu amigo
+    // invisible asignado, nunca un participante elegido a mano. Esto se
+    // valida aca (no solo escondiendo el selector en la pantalla), asi que
+    // no hay forma de preguntarle a otra persona ni siquiera armando el
+    // pedido a mano.
     @Transactional
-    public AskedQuestionResponse ask(User asker, Long roomId, Long targetUserId, AskQuestionRequest request) {
+    public AskedQuestionResponse askMyAssignedFriend(User asker, Long roomId, AskQuestionRequest request) {
         Room room = requireMember(asker, roomId);
-        User target = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
-        if (!participantRepository.existsByRoomAndUser(room, target)) {
-            throw new ConflictException("Ese usuario no es parte de esta sala");
+        if (room.getStatus() != RoomStatus.SEALED) {
+            throw new ConflictException("Todavia no se hizo el sorteo en esta sala");
         }
-        if (asker.getId().equals(targetUserId)) {
-            throw new ConflictException("No podes dejarte una pregunta a vos mismo");
-        }
+
+        Assignment assignment = assignmentRepository.findByRoomAndGiver(room, asker)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontro tu asignacion en esta sala"));
+        User target = assignment.getReceiver();
 
         Question question = Question.builder()
                 .room(room)

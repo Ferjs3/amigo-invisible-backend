@@ -33,10 +33,10 @@ public class QuestionController {
         return ResponseEntity.ok(questionService.getReceivedByMe(currentUser.get(), roomId));
     }
 
-    @PostMapping("/api/rooms/{roomId}/questions/{targetUserId}")
-    public ResponseEntity<AskedQuestionResponse> ask(@PathVariable Long roomId, @PathVariable Long targetUserId,
+    @PostMapping("/api/rooms/{roomId}/questions/ask")
+    public ResponseEntity<AskedQuestionResponse> ask(@PathVariable Long roomId,
                                                       @Valid @RequestBody AskQuestionRequest request) {
-        var response = questionService.ask(currentUser.get(), roomId, targetUserId, request);
+        var response = questionService.askMyAssignedFriend(currentUser.get(), roomId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
