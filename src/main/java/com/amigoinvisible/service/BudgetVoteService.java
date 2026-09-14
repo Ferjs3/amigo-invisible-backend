@@ -27,7 +27,7 @@ import java.util.Map;
 public class BudgetVoteService {
 
     private static final BigDecimal MIN_OPTION = BigDecimal.valueOf(10_000);
-    private static final BigDecimal MAX_OPTION = BigDecimal.valueOf(200_000);
+    private static final BigDecimal MAX_OPTION = BigDecimal.valueOf(100_000);
     private static final BigDecimal STEP = BigDecimal.valueOf(10_000);
 
     private final RoomRepository roomRepository;
